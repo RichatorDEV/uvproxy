@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A new search engine proxy with inline web content.">
+    <meta name="description" content="WebProxy Search: A new search engine with inline browsing.">
     <title>WebProxy Search</title>
     <style>
         :root {
@@ -210,8 +210,10 @@
             color: #888;
         }
 
-        .gcse-searchresults-only {
+        .gsc-control-cse {
             width: 100%;
+            background: transparent !important;
+            border: none !important;
         }
 
         .gsc-results .gsc-result {
@@ -222,6 +224,7 @@
             color: var(--primary-color);
             font-size: 18px;
             text-decoration: none;
+            cursor: pointer;
         }
 
         .gsc-results .gs-title a:hover {
@@ -363,7 +366,7 @@
 
         <div class="main-content">
             <section class="results" id="results">
-                <div class="gcse-searchresults-only" data-query=""></div>
+                <div class="gcse-search" data-enableHistory="false"></div>
             </section>
             <section class="content-area" id="content-area">
                 <div class="placeholder">Select a result to view the page here.</div>
@@ -393,16 +396,18 @@
                     safe: 'active',
                     anonymize: false,
                     cacheResults: true,
-                    proxyIp: '192.168.1.1' // Mock
+                    proxyIp: '192.168.1.1'
                 };
                 this.currentContentUrl = null;
+                this.debug = true; // Enable debug logging
                 this.init();
             }
 
             init() {
                 this.bindEvents();
                 this.applyTheme();
-                this.observeCSE();
+                // Wait for CSE to load
+                this.waitForCSE();
             }
 
             bindEvents() {
@@ -416,10 +421,26 @@
                 document.getElementById('about-link').addEventListener('click', (e) => this.showAbout(e));
             }
 
+            waitForCSE() {
+                const checkCSE = () => {
+                    if (window.google && window.google.search && window.google.search.cse) {
+                        if (this.debug) console.log('CSE loaded successfully');
+                        this.observeCSE();
+                    } else {
+                        if (this.debug) console.log('Waiting for CSE...');
+                        setTimeout(checkCSE, 500);
+                    }
+                };
+                checkCSE();
+            }
+
             handleSearch(e) {
                 e.preventDefault();
                 const query = document.getElementById('search-input').value.trim();
-                if (!query) return;
+                if (!query) {
+                    this.showError('Please enter a search query.');
+                    return;
+                }
 
                 this.showLoading();
                 this.executeSearch(query);
@@ -427,9 +448,9 @@
             }
 
             executeSearch(query) {
-                const cseElement = document.querySelector('.gcse-searchresults-only');
-                cseElement.setAttribute('data-query', query);
+                if (this.debug) console.log('Executing search:', query);
 
+                const cseElement = document.querySelector('.gcse-search');
                 // Apply settings
                 if (this.settings.type !== 'all') {
                     cseElement.setAttribute('data-restriction', this.settings.type);
@@ -438,7 +459,7 @@
                 }
                 cseElement.setAttribute('data-safeSearch', this.settings.safe);
 
-                // Simulate proxy behavior
+                // Simulate proxy
                 if (this.settings.anonymize) {
                     console.log('Anonymizing request via proxy IP:', this.settings.proxyIp);
                 }
@@ -446,9 +467,24 @@
                 // Clear content area
                 this.clearContentArea();
 
-                // Trigger CSE search
+                // Hide default CSE input
+                setTimeout(() => {
+                    const cseInput = document.querySelector('.gsc-input-box');
+                    if (cseInput) cseInput.style.display = 'none';
+                }, 1000);
+
+                // Execute search
                 if (window.google && window.google.search && window.google.search.cse) {
-                    window.google.search.cse.element.getElement('searchresults-only').execute(query);
+                    const element = window.google.search.cse.element.getElement('search');
+                    if (element) {
+                        element.execute(query);
+                    } else {
+                        this.showError('CSE element not found. Please refresh the page.');
+                        this.hideLoading();
+                    }
+                } else {
+                    this.showError('CSE not loaded. Please check your connection.');
+                    this.hideLoading();
                 }
 
                 // Cache query
@@ -468,7 +504,7 @@
                     const suggestions = await this.fetchAutocomplete(query);
                     this.displayAutocomplete(suggestions);
                 } catch (error) {
-                    console.error('Autocomplete error:', error);
+                    if (this.debug) console.error('Autocomplete error:', error);
                 }
             }
 
@@ -488,7 +524,6 @@
                 this.settings.cacheResults = document.getElementById('cache-results').checked;
                 alert('Settings saved!');
                 this.showHome();
-                // Re-run search with new settings
                 const query = document.getElementById('search-input').value.trim();
                 if (query) {
                     this.executeSearch(query);
@@ -496,8 +531,8 @@
             }
 
             observeCSE() {
-                const cseElement = document.querySelector('.gcse-searchresults-only');
-                const observer = new MutationObserver((mutations) => {
+                const cseElement = document.querySelector('.gcse-search');
+                const observer = new MutationObserver(() => {
                     this.hideLoading();
                     const error = cseElement.querySelector('.gs-no-results');
                     if (error) {
@@ -505,7 +540,6 @@
                     } else {
                         document.getElementById('error').style.display = 'none';
                     }
-                    // Attach click handlers to results
                     this.attachResultHandlers();
                 });
                 observer.observe(cseElement, { childList: true, subtree: true });
@@ -513,13 +547,18 @@
 
             attachResultHandlers() {
                 const links = document.querySelectorAll('.gsc-results .gs-title a');
+                if (this.debug) console.log('Found links:', links.length);
                 links.forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const url = link.href;
-                        this.loadContent(url);
-                    });
+                    link.removeEventListener('click', this.handleLinkClick); // Prevent duplicates
+                    link.addEventListener('click', this.handleLinkClick.bind(this));
                 });
+            }
+
+            handleLinkClick(e) {
+                e.preventDefault();
+                const url = e.target.href;
+                if (this.debug) console.log('Loading content:', url);
+                this.loadContent(url);
             }
 
             loadContent(url) {
@@ -532,7 +571,12 @@
                 const iframe = document.createElement('iframe');
                 iframe.src = url;
                 iframe.title = 'Web Content';
+                iframe.style.height = '600px'; // Fixed height for consistency
+                iframe.onload = () => {
+                    if (this.debug) console.log('Iframe loaded:', url);
+                };
                 iframe.onerror = () => {
+                    if (this.debug) console.error('Iframe failed to load:', url);
                     contentArea.innerHTML = '<div class="placeholder">This site cannot be loaded (possibly due to iframe restrictions).</div>';
                 };
                 contentArea.appendChild(iframe);
@@ -616,7 +660,7 @@
                 document.getElementById('settings-section').classList.remove('active');
                 document.getElementById('results').innerHTML = `
                     <h2>About WebProxy Search</h2>
-                    <p>A new search engine that lets you browse the web inline, powered by Google CSE.</p>
+                    <p>A new search engine with inline browsing, powered by Google CSE.</p>
                 `;
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('content-area').style.display = 'none';
@@ -635,6 +679,7 @@
                 const errorDiv = document.getElementById('error');
                 errorDiv.textContent = message;
                 errorDiv.style.display = 'block';
+                this.hideLoading();
             }
 
             toggleTheme() {

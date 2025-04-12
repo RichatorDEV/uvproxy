@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A functional Google proxy using Custom Search Engine.">
-    <title>Google Proxy</title>
+    <meta name="description" content="A new search engine proxy with inline web content.">
+    <title>WebProxy Search</title>
     <style>
         :root {
             --primary-color: #4285f4;
             --background-color: #fff;
             --text-color: #333;
             --border-color: #dfe1e5;
+            --content-bg: #f8f9fa;
         }
 
         [data-theme="dark"] {
@@ -18,6 +19,7 @@
             --background-color: #202124;
             --text-color: #e8eaed;
             --border-color: #5f6368;
+            --content-bg: #303134;
         }
 
         * {
@@ -35,7 +37,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -69,7 +71,7 @@
 
         .search-section {
             text-align: center;
-            margin: 50px 0;
+            margin: 40px 0;
         }
 
         .search-bar {
@@ -81,6 +83,7 @@
             border-radius: 24px;
             padding: 10px;
             box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+            background: var(--background-color);
         }
 
         .search-bar input {
@@ -175,33 +178,64 @@
             margin-top: 20px;
         }
 
-        .results {
+        .main-content {
+            display: flex;
+            gap: 20px;
             margin-top: 40px;
+        }
+
+        .results {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .content-area {
+            flex: 2;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--content-bg);
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        .content-area iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .content-area .placeholder {
+            text-align: center;
+            padding: 50px;
+            color: #888;
         }
 
         .gcse-searchresults-only {
             width: 100%;
         }
 
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin: 20px 0;
+        .gsc-results .gsc-result {
+            margin-bottom: 20px;
         }
 
-        .pagination button {
-            padding: 10px 20px;
-            border: 1px solid var(--border-color);
-            background: transparent;
+        .gsc-results .gs-title a {
+            color: var(--primary-color);
+            font-size: 18px;
+            text-decoration: none;
+        }
+
+        .gsc-results .gs-title a:hover {
+            text-decoration: underline;
+        }
+
+        .gsc-results .gs-snippet {
+            font-size: 14px;
             color: var(--text-color);
-            cursor: pointer;
-            border-radius: 4px;
         }
 
-        .pagination button:disabled {
-            cursor: not-allowed;
-            opacity: 0.5;
+        .gsc-results .gs-visibleUrl {
+            color: #006621;
+            font-size: 14px;
         }
 
         .loading {
@@ -234,6 +268,17 @@
             font-size: 14px;
         }
 
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .results,
+            .content-area {
+                max-width: 100%;
+            }
+        }
+
         @media (max-width: 600px) {
             .search-bar {
                 max-width: 100%;
@@ -258,7 +303,7 @@
     <div class="container">
         <header>
             <div class="logo">
-                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" alt="Google Proxy Logo">
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" alt="WebProxy Search Logo">
             </div>
             <nav>
                 <ul>
@@ -274,7 +319,7 @@
         <section class="search-section">
             <form id="search-form">
                 <div class="search-bar">
-                    <input type="text" id="search-input" placeholder="Search Google via Proxy..." aria-label="Search input" autocomplete="off">
+                    <input type="text" id="search-input" placeholder="Search the web..." aria-label="Search input" autocomplete="off">
                     <button type="submit" aria-label="Search">
                         <img src="https://www.google.com/images/branding/googlemic/2x/googlemic_color_24dp.png" alt="Search Icon">
                     </button>
@@ -316,15 +361,20 @@
             </form>
         </section>
 
-        <section class="results" id="results">
-            <div class="gcse-searchresults-only" data-query=""></div>
-        </section>
+        <div class="main-content">
+            <section class="results" id="results">
+                <div class="gcse-searchresults-only" data-query=""></div>
+            </section>
+            <section class="content-area" id="content-area">
+                <div class="placeholder">Select a result to view the page here.</div>
+            </section>
+        </div>
 
         <div class="loading" id="loading">Loading...</div>
         <div class="error" id="error"></div>
 
         <footer>
-            <p>© 2025 Google Proxy. Not affiliated with Google.</p>
+            <p>© 2025 WebProxy Search. Not affiliated with Google.</p>
             <p><a href="#">Privacy</a> | <a href="#">Terms</a> | <a href="#">Contact</a></p>
         </footer>
     </div>
@@ -333,7 +383,7 @@
     <script async src="https://cse.google.com/cse.js?cx=32649db6c748b4ff8"></script>
 
     <script>
-        class GoogleProxy {
+        class WebProxySearch {
             constructor() {
                 this.autocompleteUrl = 'https://suggestqueries.google.com/complete/search';
                 this.cache = new Map();
@@ -345,12 +395,12 @@
                     cacheResults: true,
                     proxyIp: '192.168.1.1' // Mock
                 };
+                this.currentContentUrl = null;
                 this.init();
             }
 
             init() {
                 this.bindEvents();
-                this.loadHistory();
                 this.applyTheme();
                 this.observeCSE();
             }
@@ -393,12 +443,15 @@
                     console.log('Anonymizing request via proxy IP:', this.settings.proxyIp);
                 }
 
+                // Clear content area
+                this.clearContentArea();
+
                 // Trigger CSE search
                 if (window.google && window.google.search && window.google.search.cse) {
                     window.google.search.cse.element.getElement('searchresults-only').execute(query);
                 }
 
-                // Cache results (mock, since CSE handles rendering)
+                // Cache query
                 if (this.settings.cacheResults) {
                     this.cache.set(query, { query, timestamp: Date.now() });
                 }
@@ -443,9 +496,8 @@
             }
 
             observeCSE() {
-                // Monitor CSE loading
                 const cseElement = document.querySelector('.gcse-searchresults-only');
-                const observer = new MutationObserver(() => {
+                const observer = new MutationObserver((mutations) => {
                     this.hideLoading();
                     const error = cseElement.querySelector('.gs-no-results');
                     if (error) {
@@ -453,8 +505,44 @@
                     } else {
                         document.getElementById('error').style.display = 'none';
                     }
+                    // Attach click handlers to results
+                    this.attachResultHandlers();
                 });
                 observer.observe(cseElement, { childList: true, subtree: true });
+            }
+
+            attachResultHandlers() {
+                const links = document.querySelectorAll('.gsc-results .gs-title a');
+                links.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const url = link.href;
+                        this.loadContent(url);
+                    });
+                });
+            }
+
+            loadContent(url) {
+                if (this.settings.anonymize) {
+                    console.log('Loading content via proxy IP:', this.settings.proxyIp, url);
+                }
+
+                const contentArea = document.getElementById('content-area');
+                contentArea.innerHTML = '';
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.title = 'Web Content';
+                iframe.onerror = () => {
+                    contentArea.innerHTML = '<div class="placeholder">This site cannot be loaded (possibly due to iframe restrictions).</div>';
+                };
+                contentArea.appendChild(iframe);
+                this.currentContentUrl = url;
+            }
+
+            clearContentArea() {
+                const contentArea = document.getElementById('content-area');
+                contentArea.innerHTML = '<div class="placeholder">Select a result to view the page here.</div>';
+                this.currentContentUrl = null;
             }
 
             displayAutocomplete(suggestions) {
@@ -465,100 +553,104 @@
                     div.textContent = suggestion;
                     div.addEventListener('click', () => {
                         document.getElementById('search-input').value = suggestion;
-EOS                    autoDiv.style.display = 'none';
-                    document.getElementById('search-form').dispatchEvent(new Event('submit'));
+                        autoDiv.style.display = 'none';
+                        document.getElementById('search-form').dispatchEvent(new Event('submit'));
+                    });
+                    autoDiv.appendChild(div);
                 });
-                autoDiv.appendChild(div);
-            });
-            autoDiv.style.display = suggestions.length ? 'block' : 'none';
-        }
+                autoDiv.style.display = suggestions.length ? 'block' : 'none';
+            }
 
-        hideAutocomplete() {
-            document.getElementById('autocomplete').style.display = 'none';
-        }
+            hideAutocomplete() {
+                document.getElementById('autocomplete').style.display = 'none';
+            }
 
-        saveToHistory(query) {
-            if (!this.history.includes(query)) {
-                this.history.unshift(query);
-                if (this.history.length > 50) this.history.pop();
-                localStorage.setItem('searchHistory', JSON.stringify(this.history));
+            saveToHistory(query) {
+                if (!this.history.includes(query)) {
+                    this.history.unshift(query);
+                    if (this.history.length > 50) this.history.pop();
+                    localStorage.setItem('searchHistory', JSON.stringify(this.history));
+                }
+            }
+
+            showSettings(e) {
+                e.preventDefault();
+                document.getElementById('settings-section').classList.add('active');
+                document.getElementById('results').style.display = 'none';
+                document.getElementById('content-area').style.display = 'none';
+            }
+
+            showHome(e) {
+                e.preventDefault();
+                document.getElementById('settings-section').classList.remove('active');
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('content-area').style.display = 'block';
+            }
+
+            showHistory(e) {
+                e.preventDefault();
+                document.getElementById('settings-section').classList.remove('active');
+                document.getElementById('results').innerHTML = '<h2>Search History</h2>';
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('content-area').style.display = 'none';
+                if (this.history.length === 0) {
+                    document.getElementById('results').innerHTML += '<p>No search history.</p>';
+                    return;
+                }
+                const ul = document.createElement('ul');
+                this.history.forEach(query => {
+                    const li = document.createElement('li');
+                    li.textContent = query;
+                    li.style.cursor = 'pointer';
+                    li.addEventListener('click', () => {
+                        document.getElementById('search-input').value = query;
+                        document.getElementById('search-form').dispatchEvent(new Event('submit'));
+                    });
+                    ul.appendChild(li);
+                });
+                document.getElementById('results').appendChild(ul);
+            }
+
+            showAbout(e) {
+                e.preventDefault();
+                document.getElementById('settings-section').classList.remove('active');
+                document.getElementById('results').innerHTML = `
+                    <h2>About WebProxy Search</h2>
+                    <p>A new search engine that lets you browse the web inline, powered by Google CSE.</p>
+                `;
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('content-area').style.display = 'none';
+            }
+
+            showLoading() {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+            }
+
+            hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            toggleTheme() {
+                const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
+
+            applyTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
             }
         }
 
-        showSettings(e) {
-            e.preventDefault();
-            document.getElementById('settings-section').classList.add('active');
-            document.getElementById('results').style.display = 'none';
-        }
-
-        showHome(e) {
-            e.preventDefault();
-            document.getElementById('settings-section').classList.remove('active');
-            document.getElementById('results').style.display = 'block';
-        }
-
-        showHistory(e) {
-            e.preventDefault();
-            document.getElementById('settings-section').classList.remove('active');
-            document.getElementById('results').innerHTML = '<h2>Search History</h2>';
-            document.getElementById('results').style.display = 'block';
-            if (this.history.length === 0) {
-                document.getElementById('results').innerHTML += '<p>No search history.</p>';
-                return;
-            }
-            const ul = document.createElement('ul');
-            this.history.forEach(query => {
-                const li = document.createElement('li');
-                li.textContent = query;
-                li.style.cursor = 'pointer';
-                li.addEventListener('click', () => {
-                    document.getElementById('search-input').value = query;
-                    document.getElementById('search-form').dispatchEvent(new Event('submit'));
-                });
-                ul.appendChild(li);
-            });
-            document.getElementById('results').appendChild(ul);
-        }
-
-        showAbout(e) {
-            e.preventDefault();
-            document.getElementById('settings-section').classList.remove('active');
-            document.getElementById('results').innerHTML = `
-                <h2>About</h2>
-                <p>This Google proxy uses a Custom Search Engine to search the web anonymously.</p>
-            `;
-            document.getElementById('results').style.display = 'block';
-        }
-
-        showLoading() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('error').style.display = 'none';
-        }
-
-        hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
-
-        showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-
-        toggleTheme() {
-            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-        }
-
-        applyTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        }
-    }
-
-    // Initialize Proxy
-    const proxy = new GoogleProxy();
-</script>
+        // Initialize Search Engine
+        const searchEngine = new WebProxySearch();
+    </script>
 </body>
 </html>

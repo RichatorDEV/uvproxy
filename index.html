@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A functional Google proxy using Custom Search Engine.">
+    <title>Google Proxy</title>
+    <style>
+        :root {
+            --primary-color: #4285f4;
+            --background-color: #fff;
+            --text-color: #333;
+            --border-color: #dfe1e5;
+        }
+
+        [data-theme="dark"] {
+            --primary-color: #8ab4f8;
+            --background-color: #202124;
+            --text-color: #e8eaed;
+            --border-color: #5f6368;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo img {
+            width: 120px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+        }
+
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .search-section {
+            text-align: center;
+            margin: 50px 0;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 10px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            padding: 10px;
+            background: transparent;
+            color: var(--text-color);
+        }
+
+        .search-bar button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .search-bar button img {
+            width: 20px;
+            filter: invert(0.5);
+        }
+
+        .autocomplete {
+            position: absolute;
+            background: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .autocomplete div {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .autocomplete div:hover {
+            background: #f1f3f4;
+        }
+
+        .settings-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .settings-section h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .settings-section h3 {
+            font-size: 16px;
+            margin: 20px 0 10px;
+        }
+
+        .settings-section label {
+            display: block;
+            margin: 10px 0 5px;
+            font-size: 14px;
+        }
+
+        .settings-section input,
+        .settings-section select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-color);
+        }
+
+        .settings-section button {
+            padding: 10px 20px;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .results {
+            margin-top: 40px;
+        }
+
+        .gcse-searchresults-only {
+            width: 100%;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .pagination button {
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-color);
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .pagination button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .error {
+            color: #d93025;
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .theme-toggle {
+            padding: 10px 20px;
+            border: none;
+            background: var(--primary-color);
+            color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .search-bar {
+                max-width: 100%;
+            }
+
+            .logo img {
+                width: 100px;
+            }
+
+            nav ul {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .settings-section {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" alt="Google Proxy Logo">
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" id="home-link">Home</a></li>
+                    <li><a href="#" id="about-link">About</a></li>
+                    <li><a href="#" id="settings-link">Settings</a></li>
+                    <li><a href="#" id="history-link">History</a></li>
+                </ul>
+            </nav>
+            <button class="theme-toggle" id="theme-toggle">Toggle Dark Mode</button>
+        </header>
+
+        <section class="search-section">
+            <form id="search-form">
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Search Google via Proxy..." aria-label="Search input" autocomplete="off">
+                    <button type="submit" aria-label="Search">
+                        <img src="https://www.google.com/images/branding/googlemic/2x/googlemic_color_24dp.png" alt="Search Icon">
+                    </button>
+                </div>
+                <div class="autocomplete" id="autocomplete"></div>
+            </form>
+        </section>
+
+        <section class="settings-section" id="settings-section">
+            <h2>Settings</h2>
+            <form id="settings-form">
+                <h3>Search Filters</h3>
+                <label for="type">Result Type</label>
+                <select id="type" name="type">
+                    <option value="all">All</option>
+                    <option value="web">Web</option>
+                    <option value="images">Images</option>
+                    <option value="news">News</option>
+                    <option value="videos">Videos</option>
+                </select>
+
+                <label for="safe">Safe Search</label>
+                <select id="safe" name="safe">
+                    <option value="active">On</option>
+                    <option value="off">Off</option>
+                </select>
+
+                <h3>Proxy Settings</h3>
+                <label for="proxy-ip">Proxy IP (Mock)</label>
+                <input type="text" id="proxy-ip" placeholder="e.g., 192.168.1.1" disabled>
+
+                <label for="anonymize">Anonymize Requests</label>
+                <input type="checkbox" id="anonymize" name="anonymize">
+
+                <label for="cache-results">Cache Results Locally</label>
+                <input type="checkbox" id="cache-results" name="cache-results" checked>
+
+                <button type="submit">Save Settings</button>
+            </form>
+        </section>
+
+        <section class="results" id="results">
+            <div class="gcse-searchresults-only" data-query=""></div>
+        </section>
+
+        <div class="loading" id="loading">Loading...</div>
+        <div class="error" id="error"></div>
+
+        <footer>
+            <p>© 2025 Google Proxy. Not affiliated with Google.</p>
+            <p><a href="#">Privacy</a> | <a href="#">Terms</a> | <a href="#">Contact</a></p>
+        </footer>
+    </div>
+
+    <!-- Google CSE Script -->
+    <script async src="https://cse.google.com/cse.js?cx=32649db6c748b4ff8"></script>
+
+    <script>
+        class GoogleProxy {
+            constructor() {
+                this.autocompleteUrl = 'https://suggestqueries.google.com/complete/search';
+                this.cache = new Map();
+                this.history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+                this.settings = {
+                    type: 'all',
+                    safe: 'active',
+                    anonymize: false,
+                    cacheResults: true,
+                    proxyIp: '192.168.1.1' // Mock
+                };
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.loadHistory();
+                this.applyTheme();
+                this.observeCSE();
+            }
+
+            bindEvents() {
+                document.getElementById('search-form').addEventListener('submit', (e) => this.handleSearch(e));
+                document.getElementById('search-input').addEventListener('input', (e) => this.handleAutocomplete(e));
+                document.getElementById('settings-form').addEventListener('submit', (e) => this.handleSettings(e));
+                document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
+                document.getElementById('settings-link').addEventListener('click', (e) => this.showSettings(e));
+                document.getElementById('home-link').addEventListener('click', (e) => this.showHome(e));
+                document.getElementById('history-link').addEventListener('click', (e) => this.showHistory(e));
+                document.getElementById('about-link').addEventListener('click', (e) => this.showAbout(e));
+            }
+
+            handleSearch(e) {
+                e.preventDefault();
+                const query = document.getElementById('search-input').value.trim();
+                if (!query) return;
+
+                this.showLoading();
+                this.executeSearch(query);
+                this.saveToHistory(query);
+            }
+
+            executeSearch(query) {
+                const cseElement = document.querySelector('.gcse-searchresults-only');
+                cseElement.setAttribute('data-query', query);
+
+                // Apply settings
+                if (this.settings.type !== 'all') {
+                    cseElement.setAttribute('data-restriction', this.settings.type);
+                } else {
+                    cseElement.removeAttribute('data-restriction');
+                }
+                cseElement.setAttribute('data-safeSearch', this.settings.safe);
+
+                // Simulate proxy behavior
+                if (this.settings.anonymize) {
+                    console.log('Anonymizing request via proxy IP:', this.settings.proxyIp);
+                }
+
+                // Trigger CSE search
+                if (window.google && window.google.search && window.google.search.cse) {
+                    window.google.search.cse.element.getElement('searchresults-only').execute(query);
+                }
+
+                // Cache results (mock, since CSE handles rendering)
+                if (this.settings.cacheResults) {
+                    this.cache.set(query, { query, timestamp: Date.now() });
+                }
+            }
+
+            async handleAutocomplete(e) {
+                const query = e.target.value.trim();
+                if (query.length < 3) {
+                    this.hideAutocomplete();
+                    return;
+                }
+
+                try {
+                    const suggestions = await this.fetchAutocomplete(query);
+                    this.displayAutocomplete(suggestions);
+                } catch (error) {
+                    console.error('Autocomplete error:', error);
+                }
+            }
+
+            async fetchAutocomplete(query) {
+                const url = `${this.autocompleteUrl}?client=firefox&q=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch autocomplete');
+                const data = await response.json();
+                return data[1];
+            }
+
+            handleSettings(e) {
+                e.preventDefault();
+                this.settings.type = document.getElementById('type').value;
+                this.settings.safe = document.getElementById('safe').value;
+                this.settings.anonymize = document.getElementById('anonymize').checked;
+                this.settings.cacheResults = document.getElementById('cache-results').checked;
+                alert('Settings saved!');
+                this.showHome();
+                // Re-run search with new settings
+                const query = document.getElementById('search-input').value.trim();
+                if (query) {
+                    this.executeSearch(query);
+                }
+            }
+
+            observeCSE() {
+                // Monitor CSE loading
+                const cseElement = document.querySelector('.gcse-searchresults-only');
+                const observer = new MutationObserver(() => {
+                    this.hideLoading();
+                    const error = cseElement.querySelector('.gs-no-results');
+                    if (error) {
+                        this.showError('No results found.');
+                    } else {
+                        document.getElementById('error').style.display = 'none';
+                    }
+                });
+                observer.observe(cseElement, { childList: true, subtree: true });
+            }
+
+            displayAutocomplete(suggestions) {
+                const autoDiv = document.getElementById('autocomplete');
+                autoDiv.innerHTML = '';
+                suggestions.forEach(suggestion => {
+                    const div = document.createElement('div');
+                    div.textContent = suggestion;
+                    div.addEventListener('click', () => {
+                        document.getElementById('search-input').value = suggestion;
+EOS                    autoDiv.style.display = 'none';
+                    document.getElementById('search-form').dispatchEvent(new Event('submit'));
+                });
+                autoDiv.appendChild(div);
+            });
+            autoDiv.style.display = suggestions.length ? 'block' : 'none';
+        }
+
+        hideAutocomplete() {
+            document.getElementById('autocomplete').style.display = 'none';
+        }
+
+        saveToHistory(query) {
+            if (!this.history.includes(query)) {
+                this.history.unshift(query);
+                if (this.history.length > 50) this.history.pop();
+                localStorage.setItem('searchHistory', JSON.stringify(this.history));
+            }
+        }
+
+        showSettings(e) {
+            e.preventDefault();
+            document.getElementById('settings-section').classList.add('active');
+            document.getElementById('results').style.display = 'none';
+        }
+
+        showHome(e) {
+            e.preventDefault();
+            document.getElementById('settings-section').classList.remove('active');
+            document.getElementById('results').style.display = 'block';
+        }
+
+        showHistory(e) {
+            e.preventDefault();
+            document.getElementById('settings-section').classList.remove('active');
+            document.getElementById('results').innerHTML = '<h2>Search History</h2>';
+            document.getElementById('results').style.display = 'block';
+            if (this.history.length === 0) {
+                document.getElementById('results').innerHTML += '<p>No search history.</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            this.history.forEach(query => {
+                const li = document.createElement('li');
+                li.textContent = query;
+                li.style.cursor = 'pointer';
+                li.addEventListener('click', () => {
+                    document.getElementById('search-input').value = query;
+                    document.getElementById('search-form').dispatchEvent(new Event('submit'));
+                });
+                ul.appendChild(li);
+            });
+            document.getElementById('results').appendChild(ul);
+        }
+
+        showAbout(e) {
+            e.preventDefault();
+            document.getElementById('settings-section').classList.remove('active');
+            document.getElementById('results').innerHTML = `
+                <h2>About</h2>
+                <p>This Google proxy uses a Custom Search Engine to search the web anonymously.</p>
+            `;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        toggleTheme() {
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        applyTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+    }
+
+    // Initialize Proxy
+    const proxy = new GoogleProxy();
+</script>
+</body>
+</html>

@@ -200,7 +200,7 @@
 
         .content-area iframe {
             width: 100%;
-            height: 100%;
+            height: 600px;
             border: none;
         }
 
@@ -211,7 +211,6 @@
         }
 
         .gsc-control-cse {
-            width: 100%;
             background: transparent !important;
             border: none !important;
         }
@@ -239,6 +238,12 @@
         .gsc-results .gs-visibleUrl {
             color: #006621;
             font-size: 14px;
+        }
+
+        /* Hide CSE input and branding */
+        .gsc-input-box,
+        .gsc-branding {
+            display: none !important;
         }
 
         .loading {
@@ -366,7 +371,7 @@
 
         <div class="main-content">
             <section class="results" id="results">
-                <div class="gcse-search" data-enableHistory="false"></div>
+                <div class="gcse-searchresults-only" data-enableAutoComplete="false" data-query=""></div>
             </section>
             <section class="content-area" id="content-area">
                 <div class="placeholder">Select a result to view the page here.</div>
@@ -399,14 +404,13 @@
                     proxyIp: '192.168.1.1'
                 };
                 this.currentContentUrl = null;
-                this.debug = true; // Enable debug logging
+                this.debug = true;
                 this.init();
             }
 
             init() {
                 this.bindEvents();
                 this.applyTheme();
-                // Wait for CSE to load
                 this.waitForCSE();
             }
 
@@ -450,7 +454,9 @@
             executeSearch(query) {
                 if (this.debug) console.log('Executing search:', query);
 
-                const cseElement = document.querySelector('.gcse-search');
+                const cseElement = document.querySelector('.gcse-searchresults-only');
+                cseElement.setAttribute('data-query', query);
+
                 // Apply settings
                 if (this.settings.type !== 'all') {
                     cseElement.setAttribute('data-restriction', this.settings.type);
@@ -467,15 +473,9 @@
                 // Clear content area
                 this.clearContentArea();
 
-                // Hide default CSE input
-                setTimeout(() => {
-                    const cseInput = document.querySelector('.gsc-input-box');
-                    if (cseInput) cseInput.style.display = 'none';
-                }, 1000);
-
                 // Execute search
                 if (window.google && window.google.search && window.google.search.cse) {
-                    const element = window.google.search.cse.element.getElement('search');
+                    const element = window.google.search.cse.element.getElement('searchresults-only');
                     if (element) {
                         element.execute(query);
                     } else {
@@ -531,7 +531,7 @@
             }
 
             observeCSE() {
-                const cseElement = document.querySelector('.gcse-search');
+                const cseElement = document.querySelector('.gcse-searchresults-only');
                 const observer = new MutationObserver(() => {
                     this.hideLoading();
                     const error = cseElement.querySelector('.gs-no-results');
@@ -549,7 +549,7 @@
                 const links = document.querySelectorAll('.gsc-results .gs-title a');
                 if (this.debug) console.log('Found links:', links.length);
                 links.forEach(link => {
-                    link.removeEventListener('click', this.handleLinkClick); // Prevent duplicates
+                    link.removeEventListener('click', this.handleLinkClick);
                     link.addEventListener('click', this.handleLinkClick.bind(this));
                 });
             }
@@ -571,7 +571,6 @@
                 const iframe = document.createElement('iframe');
                 iframe.src = url;
                 iframe.title = 'Web Content';
-                iframe.style.height = '600px'; // Fixed height for consistency
                 iframe.onload = () => {
                     if (this.debug) console.log('Iframe loaded:', url);
                 };
